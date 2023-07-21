@@ -28,6 +28,7 @@ def main():
 
         if key == ord(' '):
              cv2.imwrite("image_2.jpg", undistort_image)
+             cv2.imwrite("trimmed_image.jpg", trimmed_image)
 
     
         if(number_of_triming == 0):
@@ -40,8 +41,12 @@ def main():
             else:
                 image_for_trim = trimmed_image
             trimmed_image = board_detection.trim_chessboard(image_for_trim)
-
         cv2.imshow("trimmed_image", trimmed_image)
+
+        image_without_white_stones = board_detection.color_white_stones(trimmed_image)
+        cv2.imshow("image_without_white_stones", image_without_white_stones)
+
+
 
 
     # stop data acquisition
