@@ -144,6 +144,8 @@ def get_contours_off_all_rectangles(image):
 
         gray = cv2.cvtColor(black_image, cv2.COLOR_RGB2GRAY)
 
+        cv2.imshow("all_rectangles_black_image", gray)
+
         # Find contours
         contours, _ = cv2.findContours(gray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -179,7 +181,7 @@ def get_contours_off_all_rectangles(image):
                     cv2.rectangle(new_image, (x, y), (x + w, y + h), (36,255,12), 1)
             # cv2.drawContours(result, [contours[position]], -1, (0, 0, 255), 2)
 
-            cv2.imshow('new_image', new_image)
+            cv2.imshow('all_rectangles_new_image', new_image)
             if(correct_result == 64):
                 break
 
@@ -190,7 +192,7 @@ def get_contours_off_all_rectangles(image):
 occupancy_canny_param1 = 1
 occupancy_canny_param2 = 1
 
-def get_occupancy(image, createTrackBars, number_of_occupancy):
+def get_occupancy(image, createTrackBars, number_of_occupancy, init):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # Blur
     blur = cv2.GaussianBlur(gray, (5,5), 0)
@@ -216,20 +218,25 @@ def get_occupancy(image, createTrackBars, number_of_occupancy):
         cv2.imshow("Occupancy_canny", edges)
 
         imagem = cv2.bitwise_not(edges)
+        cv2.imshow("Occupancy_imagem", imagem)
 
         # Closing
         kernel = np.ones((30,30),np.uint8)
         closing = cv2.morphologyEx(imagem, cv2.MORPH_OPEN, kernel)
+        cv2.imshow("Occupancy_closing", closing)
 
         contours = cv2.findContours(closing, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         contours = contours[0] if len(contours) == 2 else contours[1]
 
+        print("Occupancy: " + str(len(contours)))
         result = image.copy()
         for c in contours:
             area = cv2.contourArea(c)
-            cv2.drawContours(result, [c], -1, (0, 255, 0), 1)
+            cv2.drawContours(result, [c], -1, (0, 255, 0), 2)
 
-        if(len(contours) == number_of_occupancy or (occupancy_canny_param1 == 100 and occupancy_canny_param2 == 100)):
+        cv2.imshow('Occupancy_result', result)
+
+        if(init == False or len(contours) == number_of_occupancy or (occupancy_canny_param1 == 100 and occupancy_canny_param2 == 100)):
             break
 
         occupancy_canny_param1 += 1
@@ -241,7 +248,7 @@ def get_occupancy(image, createTrackBars, number_of_occupancy):
             occupancy_canny_param1 = 1
             occupancy_canny_param2 = 1
 
-        cv2.imshow('result', result)
+        
     return contours
 
 
@@ -349,3 +356,32 @@ def is_rectangle_black(img, rectangle, threshold=127):
         return True
     else:
         return False
+    
+
+def is_hand_above_image(image, number_of_occupancy):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # Blur
+    blur = cv2.GaussianBlur(gray, (5,5), 0)
+
+    # print("HAND")
+
+    occupancy_canny_param1 = cv2.getTrackbarPos('param1','Occupancy_canny')
+    occupancy_canny_param2 = cv2.getTrackbarPos('param2','Occupancy_canny')
+
+    # print(str(occupancy_canny_param1) + " - " + str(occupancy_canny_param2))
+    # Canny
+    edges = cv2.Canny(blur,occupancy_canny_param1,occupancy_canny_param2,apertureSize=3)
+
+    imagem = cv2.bitwise_not(edges)
+
+    # Closing
+    kernel = np.ones((30,30),np.uint8)
+    closing = cv2.morphologyEx(imagem, cv2.MORPH_OPEN, kernel)
+
+    contours = cv2.findContours(closing, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours = contours[0] if len(contours) == 2 else contours[1]
+    
+    # print("Hand: " + str(len(contours)) + " - " + str(number_of_occupancy))
+    if(len(contours) != number_of_occupancy):
+        return True
+    return False

@@ -50,20 +50,21 @@ def main():
             trimmed_image = trimmed_image[y:y+h, x:x+w]
         
         cv2.imshow("trimmed_image", trimmed_image)
-        
+
         if(init):
             all_contours = board_detection.get_contours_off_all_rectangles(trimmed_image)
+            createTrackBars = False
             init = False
-        
-        occupancy_contours = board_detection.get_occupancy(trimmed_image, createTrackBars, number_of_occupancy)
+        else:
+            isHandAboveImage = board_detection.is_hand_above_image(trimmed_image, number_of_occupancy)
+            if(isHandAboveImage):
+                print("RUKA")
+                continue
+    
+        occupancy_contours = board_detection.get_occupancy(trimmed_image, createTrackBars, number_of_occupancy, init)
 
         board_detection.get_possible_moves(all_contours, occupancy_contours, trimmed_image)
-        # image_without_white_stones = board_detection.color_white_stones(trimmed_image)
-        # cv2.imshow("image_without_white_stones", image_without_white_stones)
 
-        # highlighted_black_rectangles = board_detection.highlight_black_rectangles(image_without_white_stones)
-        # cv2.imshow("highlighted_black_rectangles", highlighted_black_rectangles)
-        createTrackBars = False
 
 
     # stop data acquisition
