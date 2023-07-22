@@ -1,10 +1,12 @@
 from logging import root
+import threading
 import tkinter
 import cv2
 from ximea import xiapi
 import numpy as np
 import ximea_camera
 import board_detection
+import concurrent.futures
 
 
 def main():
@@ -12,7 +14,10 @@ def main():
     cam = ximea_camera.get_camera()  # call your function with module name prefix
     img = xiapi.Image()
     
-    number_of_triming = 0
+    bounderies = None
+    createTrackBars = True
+
+    init = True
     while 1:
         key = cv2.waitKey(1) & 0xFF
         if key == 27:
@@ -31,22 +36,33 @@ def main():
              cv2.imwrite("trimmed_image.jpg", trimmed_image)
 
     
-        if(number_of_triming == 0):
-            number_of_triming = board_detection.get_number_of_triming(undistort_image)
+        if(bounderies is None):
+            bounderies = board_detection.get_trim_param(undistort_image)
 
-        trimmed_image = None
-        for trim in range(number_of_triming):
-            if(trimmed_image is None):
-                image_for_trim = undistort_image
-            else:
-                image_for_trim = trimmed_image
-            trimmed_image = board_detection.trim_chessboard(image_for_trim)
+        trimmed_image = undistort_image.copy()
+        for boundery in bounderies:
+            # Get the bounding rectangle for the largest contour
+            x, y, w, h = cv2.boundingRect(boundery)
+
+            # Crop the image using the bounding rectangle
+            trimmed_image = trimmed_image[y:y+h, x:x+w]
+        
         cv2.imshow("trimmed_image", trimmed_image)
+        
+        if(init):
+            all_contours = board_detection.get_contours_off_all_rectangles(trimmed_image)
+            
+            init = False
+            
+        occupancy_contours = board_detection.get_occupancy(trimmed_image, createTrackBars)
 
-        image_without_white_stones = board_detection.color_white_stones(trimmed_image)
-        cv2.imshow("image_without_white_stones", image_without_white_stones)
+        board_detection.get_possible_moves(all_contours, occupancy_contours, trimmed_image)
+        # image_without_white_stones = board_detection.color_white_stones(trimmed_image)
+        # cv2.imshow("image_without_white_stones", image_without_white_stones)
 
-
+        # highlighted_black_rectangles = board_detection.highlight_black_rectangles(image_without_white_stones)
+        # cv2.imshow("highlighted_black_rectangles", highlighted_black_rectangles)
+        createTrackBars = False
 
 
     # stop data acquisition

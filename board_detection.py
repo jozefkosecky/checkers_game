@@ -3,29 +3,37 @@ import numpy as np
 import tkinter as tk
 from PIL import Image, ImageTk
 
-def get_number_of_triming(undistort_image):
-    number_of_triming = 0
-    trimmed_image = None
+
+
+def nothing(x):
+    pass
+
+def get_trim_param(undistort_image):
+    trimmed_image = undistort_image
+    bounderies = []
     while 1:
-        if(trimmed_image is None):
-            image_for_trim = undistort_image
-        else:
-            image_for_trim = trimmed_image
-        trimmed_image = trim_chessboard(image_for_trim)
+        bounderies.append(get_bounderies(trimmed_image)) 
+        
+        # Get the bounding rectangle for the largest contour
+        x, y, w, h = cv2.boundingRect(bounderies[-1])
+
+        # Crop the image using the bounding rectangle
+        trimmed_image = trimmed_image[y:y+h, x:x+w]
+
         cv2.imshow("trimming", trimmed_image)
+
         key = cv2.waitKey(0)
         if key == 27:
-            number_of_triming += 1
             cv2.destroyWindow("trimming")
             break
-        else:
-            number_of_triming += 1
 
-    return number_of_triming
+
+    
+    return bounderies
             
-def trim_chessboard(image):  # Remove argument here
+def get_bounderies(image):  # Remove argument here
     # Convert the image to grayscale
-    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blur = cv2.GaussianBlur(gray, (5,5), 0)
 
     # Threshold the image to separate the black frame
@@ -37,20 +45,14 @@ def trim_chessboard(image):  # Remove argument here
     # Sort the contours by area and keep the largest one
     contours = sorted(contours, key=cv2.contourArea, reverse=True)
 
-    # Get the bounding rectangle for the largest contour
-    x, y, w, h = cv2.boundingRect(contours[0])
-
-    # Crop the image using the bounding rectangle
-    cropped_image = image[y:y+h, x:x+w]
-
-    return cropped_image
+    return contours[0]
 
 
 def color_white_stones(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     blurred = cv2.GaussianBlur(gray, (5,5), 0)
 
-    canny = cv2.Canny(blurred, 200, 1, 1)
+    canny = cv2.Canny(blurred, 223, 1, 1)
 
     kernel = np.ones((2,2),np.uint8)
     dilate = cv2.dilate(canny,kernel,iterations = 1)
@@ -60,6 +62,229 @@ def color_white_stones(image):
 
     img_copy = image.copy()
     for c in contours:
-        cv2.drawContours(img_copy, [c], -1, (50, 50, 50), -1)
+        cv2.drawContours(img_copy, [c], -1, (40, 40, 40), -1)
 
     return img_copy
+
+def highlight_black_rectangles(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5,5), 0)
+    thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+
+    # Closing
+    kernel = np.ones((39,31),np.uint8)
+    closing = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+
+    # Dilate
+    kernel = np.ones((10,10),np.uint8)
+    dilate = cv2.dilate(closing,kernel,iterations = 1)
+
+    cv2.imshow("dilate", dilate)
+    imagem = cv2.bitwise_not(dilate)
+
+    canny = cv2.Canny(imagem, 120, 255, 1)
+
+    # Dilate
+    kernel = np.ones((2,2),np.uint8)
+    dilate = cv2.dilate(canny,kernel,iterations = 1)
+
+    
+
+    contours = cv2.findContours(dilate, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours = contours[0] if len(contours) == 2 else contours[1]
+
+    result = image.copy()
+    for c in contours:
+        cv2.drawContours(result, [c], -1, (0, 0, 255), 2)
+    
+    return result
+
+def get_contours_off_all_rectangles(image):
+    # Convert the image to grayscale
+    gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
+
+    # Apply edge detection
+    edges = cv2.Canny(gray, 50, 150, apertureSize=3)
+
+    attempts = 1
+    param1 = 255
+    while 1:
+        if(param1 < 1):
+            attempts += 1
+            if(attempts > 4):
+                break
+            
+        blur_copy = np.copy(edges)
+
+        param1 -= 1
+
+        # Detect lines using the Hough Line Transform
+        lines = cv2.HoughLines(edges, 1, np.pi / 180, param1)
+
+        # Create a copy of the original image to draw lines on
+        black_image = image.copy()
+        black_image = np.zeros_like(black_image)
+
+        # Draw the lines on the image
+        if lines is not None:
+            for rho, theta in lines[:, 0]:
+                a = np.cos(theta)
+                b = np.sin(theta)
+                x0 = a * rho
+                y0 = b * rho
+                x1 = int(x0 + 1000 * (-b))
+                y1 = int(y0 + 1000 * a)
+                x2 = int(x0 - 1000 * (-b))
+                y2 = int(y0 - 1000 * a)
+
+                cv2.line(black_image, (x1, y1), (x2, y2), (255, 255, 255), 2)
+
+
+        canny = cv2.Canny(black_image, 120, 255, 1)
+
+        gray = cv2.cvtColor(black_image, cv2.COLOR_RGB2GRAY)
+
+        # Find contours
+        contours, _ = cv2.findContours(gray, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        # Filter for rectangles
+        rectangles = []
+        for cnt in contours:
+            # Get convex hull
+            hull = cv2.convexHull(cnt)
+            
+            # Get approximate polygon
+            epsilon = 0.02 * cv2.arcLength(hull, True)
+            approx = cv2.approxPolyDP(hull, epsilon, True)
+            
+            # Check if it is a rectangle
+            if len(approx) == 4:
+                rectangles.append(approx)
+
+
+        # Sort the contours by area and keep the largest one
+        contours = sorted(contours, key=cv2.contourArea, reverse=True)
+
+        new_image = image.copy()
+        if(len(contours) >= 64 and len(contours) <= 150):
+            correct_result = 0
+            new_contours = []
+            for position in range(1, len(contours)):
+                new_contours.append(contours[position])
+                x,y,w,h = cv2.boundingRect(contours[position])
+            
+                if(w > 20 and h > 20 and correct_result < 64):
+                    correct_result += 1
+                    print(x, y, w, h)
+                    cv2.rectangle(new_image, (x, y), (x + w, y + h), (36,255,12), 1)
+            # cv2.drawContours(result, [contours[position]], -1, (0, 0, 255), 2)
+
+            cv2.imshow('new_image', new_image)
+            if(correct_result == 64):
+                break
+
+    return new_contours
+
+occupancy_canny_param1 = 70
+occupancy_canny_param2 = 1
+
+def get_occupancy(image, createTrackBars):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # Blur
+    blur = cv2.GaussianBlur(gray, (5,5), 0)
+    cv2.imshow('Occupancy_canny', blur)
+
+    if(createTrackBars):
+        # create trackbars for color change
+        cv2.createTrackbar('param1','Occupancy_canny',72,100,nothing)
+        cv2.setTrackbarMin('param1','Occupancy_canny', 1)
+        cv2.createTrackbar('param2','Occupancy_canny',48,200,nothing)
+        cv2.setTrackbarMin('param2','Occupancy_canny', 1)
+
+    # get current positions of four trackbars
+    occupancy_canny_param1 = cv2.getTrackbarPos('param1','Occupancy_canny')
+    occupancy_canny_param2 = cv2.getTrackbarPos('param2','Occupancy_canny')
+
+    # Canny
+    edges = cv2.Canny(blur,occupancy_canny_param1,occupancy_canny_param2,apertureSize=3)
+    cv2.imshow("Occupancy_canny", edges)
+
+    imagem = cv2.bitwise_not(edges)
+
+    # Closing
+    kernel = np.ones((30,30),np.uint8)
+    closing = cv2.morphologyEx(imagem, cv2.MORPH_OPEN, kernel)
+
+    contours = cv2.findContours(closing, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours = contours[0] if len(contours) == 2 else contours[1]
+
+    result = image.copy()
+    for c in contours:
+        area = cv2.contourArea(c)
+        cv2.drawContours(result, [c], -1, (0, 255, 0), 1)
+
+    cv2.imshow('result', result)
+    return contours
+
+def get_possible_moves(all_rectangles, occupancy_rectagles, image):
+    possible_moves = []
+    possible_move_was_found = False
+    for position in range(len(all_rectangles)):
+
+        isRectangleBlack = is_rectangle_black(image, all_rectangles[position])
+
+        if(isRectangleBlack):
+            for occupancy_rectagle in occupancy_rectagles:
+                x, y, w, h = cv2.boundingRect(occupancy_rectagle)
+                point_x = get_center_of_rectangle(x, w)
+                point_y = get_center_of_rectangle(y, h)
+
+                isPointInRectangle = is_point_in_rectangle(all_rectangles[position], point_x, point_y)
+            
+                if(isPointInRectangle):
+                    possible_move_was_found = True
+                    break
+        
+        if(possible_move_was_found and isRectangleBlack):
+            possible_moves.append(all_rectangles[position])
+            x, y, w, h = cv2.boundingRect(all_rectangles[position])
+            point_x = get_center_of_rectangle(x, w)
+            point_y = get_center_of_rectangle(y, h)
+            image = cv2.circle(image, (int(point_x), int(point_y)), radius=4, color=(0, 0, 255), thickness=-1)
+            image = cv2.drawContours(image, [all_rectangles[position]], -1, (0, 255, 0), 1)
+        else:
+            possible_moves.append(None)
+
+        cv2.imshow('possible_moves', image)
+        possible_move_was_found = False
+
+def is_point_in_rectangle(rectangle, point_x, point_y):
+    rectangle_top_left_x, rectangle_top_left_y, width, height = cv2.boundingRect(rectangle)
+    rectangle_bottom_right_x = rectangle_top_left_x + width
+    rectangle_bottom_right_y = rectangle_top_left_y + height
+
+    if rectangle_top_left_x <= point_x <= rectangle_bottom_right_x and rectangle_top_left_y <= point_y <= rectangle_bottom_right_y:
+        return True
+    else:
+        return False
+    
+def get_center_of_rectangle(point, lenght):
+    return point + (lenght / 2)
+
+def is_rectangle_black(img, rectangle, threshold=127):
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5,5), 0)
+    thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+
+    top_left_x, top_left_y, width, height = cv2.boundingRect(rectangle)
+    # Slice the rectangle from the image
+    rectangle = thresh[top_left_y:top_left_y+height, top_left_x:top_left_x+width]
+    
+    # Calculate the mean value in the rectangle
+    mean_value = np.mean(rectangle)
+
+    # Compare the mean value to the threshold
+    if mean_value < threshold:
+        return True
+    else:
+        return False
