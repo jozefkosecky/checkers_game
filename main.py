@@ -18,6 +18,8 @@ def main():
     createTrackBars = True
 
     init = True
+
+    number_of_occupancy = 40
     while 1:
         key = cv2.waitKey(1) & 0xFF
         if key == 27:
@@ -51,10 +53,9 @@ def main():
         
         if(init):
             all_contours = board_detection.get_contours_off_all_rectangles(trimmed_image)
-            
             init = False
-            
-        occupancy_contours = board_detection.get_occupancy(trimmed_image, createTrackBars)
+        
+        occupancy_contours = board_detection.get_occupancy(trimmed_image, createTrackBars, number_of_occupancy)
 
         board_detection.get_possible_moves(all_contours, occupancy_contours, trimmed_image)
         # image_without_white_stones = board_detection.color_white_stones(trimmed_image)
