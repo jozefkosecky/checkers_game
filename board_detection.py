@@ -210,8 +210,9 @@ def get_occupancy(image, createTrackBars, number_of_occupancy, init):
 
     while 1:
 
-        cv2.setTrackbarPos('param1','Occupancy_canny', occupancy_canny_param1)
-        cv2.setTrackbarPos('param2','Occupancy_canny', occupancy_canny_param2)
+        if(init == True):
+            cv2.setTrackbarPos('param1','Occupancy_canny', occupancy_canny_param1)
+            cv2.setTrackbarPos('param2','Occupancy_canny', occupancy_canny_param2)
 
         # Canny
         edges = cv2.Canny(blur,occupancy_canny_param1,occupancy_canny_param2,apertureSize=3)
@@ -228,7 +229,7 @@ def get_occupancy(image, createTrackBars, number_of_occupancy, init):
         contours = cv2.findContours(closing, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
         contours = contours[0] if len(contours) == 2 else contours[1]
 
-        print("Occupancy: " + str(len(contours)))
+        # print("Occupancy: " + str(len(contours)))
         result = image.copy()
         for c in contours:
             area = cv2.contourArea(c)
@@ -236,7 +237,8 @@ def get_occupancy(image, createTrackBars, number_of_occupancy, init):
 
         cv2.imshow('Occupancy_result', result)
 
-        if(init == False or len(contours) == number_of_occupancy or (occupancy_canny_param1 == 100 and occupancy_canny_param2 == 100)):
+        if(init == False or len(contours) == number_of_occupancy):
+            print("Occupancy: " + str(len(contours)))
             break
 
         occupancy_canny_param1 += 1
@@ -247,6 +249,7 @@ def get_occupancy(image, createTrackBars, number_of_occupancy, init):
         if(occupancy_canny_param2 == 100):
             occupancy_canny_param1 = 1
             occupancy_canny_param2 = 1
+            break
 
         
     return contours

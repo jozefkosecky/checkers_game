@@ -53,8 +53,6 @@ def main():
 
         if(init):
             all_contours = board_detection.get_contours_off_all_rectangles(trimmed_image)
-            createTrackBars = False
-            init = False
         else:
             isHandAboveImage = board_detection.is_hand_above_image(trimmed_image, number_of_occupancy)
             if(isHandAboveImage):
@@ -63,7 +61,12 @@ def main():
     
         occupancy_contours = board_detection.get_occupancy(trimmed_image, createTrackBars, number_of_occupancy, init)
 
+
         board_detection.get_possible_moves(all_contours, occupancy_contours, trimmed_image)
+
+        if(init):
+            createTrackBars = False
+            init = False
 
 
 
