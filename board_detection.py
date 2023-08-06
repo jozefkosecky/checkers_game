@@ -238,7 +238,7 @@ def get_occupancy(image, createTrackBars, number_of_occupancy, init):
         cv2.imshow('Occupancy_result', result)
 
         if(init == False or len(contours) == number_of_occupancy):
-            print("Occupancy: " + str(len(contours)))
+            # print("Occupancy: " + str(len(contours)))
             break
 
         occupancy_canny_param1 += 1
@@ -297,6 +297,36 @@ def get_occupancy(image, createTrackBars, number_of_occupancy, init):
 #     cv2.imshow('result', result)
 #     return contours
 
+def sorted_coordinates(all_contours):
+    array_2d_in_2d = []
+    position = 0
+    if(len(all_contours) == 64):
+        for i in range(8):
+            inner_array = []
+            for j in range(8):
+                x, y, w, h = cv2.boundingRect(all_contours[position])
+                inner_2d_array = [x, y, w, h]
+                inner_array.append(inner_2d_array)
+                position += 1
+            array_2d_in_2d.append(inner_array)
+
+        # print("Zaciatok [\n")
+        # for i, row in enumerate(array_2d_in_2d):
+        #     print(" ", row, end="")
+        #     if i < len(array_2d_in_2d) - 1:
+        #         print(",")
+        #     else:
+        #         print("")
+        # print("]\n")
+        # print("\n\n\n")
+
+    # Flattening the array
+    flattened_coordinates_with_wh = [coordinate for sublist in array_2d_in_2d for coordinate in sublist]
+
+    # Sorting by y first, then by x, ignoring w and h
+    sorted_coordinates = sorted(flattened_coordinates_with_wh, key=lambda x: (x[1], x[0]))
+    return sorted_coordinates
+
 def get_possible_moves(all_rectangles, occupancy_rectagles, image):
     possible_moves = []
     possible_move_was_found = False
@@ -317,20 +347,24 @@ def get_possible_moves(all_rectangles, occupancy_rectagles, image):
                     break
         
         if(possible_move_was_found and isRectangleBlack):
-            possible_moves.append(all_rectangles[position])
-            x, y, w, h = cv2.boundingRect(all_rectangles[position])
+            # possible_moves.append(all_rectangles[position])
+            possible_moves.append(3)
+            x, y, w, h = all_rectangles[position]
             point_x = get_center_of_rectangle(x, w)
             point_y = get_center_of_rectangle(y, h)
             image = cv2.circle(image, (int(point_x), int(point_y)), radius=4, color=(0, 0, 255), thickness=-1)
-            image = cv2.drawContours(image, [all_rectangles[position]], -1, (0, 255, 0), 1)
+            image = cv2.rectangle(image, (x, y), (x + w, y + h), (0, 255, 0), 1)
         else:
-            possible_moves.append(None)
+            # possible_moves.append(None)
+            possible_moves.append(0)
 
         cv2.imshow('possible_moves', image)
         possible_move_was_found = False
 
+    return possible_moves
+
 def is_point_in_rectangle(rectangle, point_x, point_y):
-    rectangle_top_left_x, rectangle_top_left_y, width, height = cv2.boundingRect(rectangle)
+    rectangle_top_left_x, rectangle_top_left_y, width, height = rectangle
     rectangle_bottom_right_x = rectangle_top_left_x + width
     rectangle_bottom_right_y = rectangle_top_left_y + height
 
@@ -347,7 +381,7 @@ def is_rectangle_black(img, rectangle, threshold=127):
     blur = cv2.GaussianBlur(gray, (5,5), 0)
     thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
 
-    top_left_x, top_left_y, width, height = cv2.boundingRect(rectangle)
+    top_left_x, top_left_y, width, height = rectangle
     # Slice the rectangle from the image
     rectangle = thresh[top_left_y:top_left_y+height, top_left_x:top_left_x+width]
     
