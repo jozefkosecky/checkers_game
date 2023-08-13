@@ -29,7 +29,7 @@ def get_camera():
     cam.open_device()
 
     # settings
-    cam.set_exposure(155000)
+    cam.set_exposure(45000)
     cam.set_param('imgdataformat', "XI_RGB32")
     cam.set_param("auto_wb", 1)
     print('Exposure was set to %i us' % cam.get_exposure())

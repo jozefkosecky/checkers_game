@@ -22,6 +22,7 @@ def main():
 
     number_of_occupancy = 40
     game_board = None
+    was_move_made = False
     while 1:
         key = cv2.waitKey(1) & 0xFF
         if key == 27:
@@ -50,31 +51,38 @@ def main():
 
             # Crop the image using the bounding rectangle
             trimmed_image = trimmed_image[y:y+h, x:x+w]
-        
+            
+        trimmed_image = cv2.rotate(trimmed_image, cv2.ROTATE_180)
         cv2.imshow("trimmed_image", trimmed_image)
 
         if(init):
             all_contours = board_detection.get_contours_off_all_rectangles(trimmed_image)
             sorted_all_contours = board_detection.sorted_coordinates(all_contours)
+            init = False
+
+            occupancy_contours = board_detection.get_occupancy(trimmed_image, createTrackBars, number_of_occupancy)
+            possible_moves = board_detection.get_possible_moves(sorted_all_contours, occupancy_contours, trimmed_image)
+            possible_moves = np.reshape(possible_moves, (8, 8))
+            createTrackBars = False
         else:
             isHandAboveImage = board_detection.is_hand_above_image(trimmed_image, number_of_occupancy)
+
+            occupancy_contours = board_detection.get_occupancy(trimmed_image, createTrackBars, number_of_occupancy)
+            possible_moves = board_detection.get_possible_moves(sorted_all_contours, occupancy_contours, trimmed_image)
+            possible_moves = np.reshape(possible_moves, (8, 8))
+            
+            # isHandAboveImage = False
             if(isHandAboveImage):
-                # print("RUKA")
+                print("RUKA")
+                was_move_made = True
                 continue
-            else:
-                game_board = game.checker_game(possible_moves, game_board)
+            else:      
+                if(was_move_made):
+                    print("\n\n\n\n\n\n\n\n\n\n")
+                game_board = game.checker_game(possible_moves, game_board, was_move_made)
+                was_move_made = False
                 
-    
-        occupancy_contours = board_detection.get_occupancy(trimmed_image, createTrackBars, number_of_occupancy, init)
-
-
-        possible_moves = board_detection.get_possible_moves(sorted_all_contours, occupancy_contours, trimmed_image)
-        possible_moves = np.reshape(possible_moves, (8, 8))
-        # print(possible_moves)
-
-        if(init):
-            createTrackBars = False
-            init = False
+            
 
 
 

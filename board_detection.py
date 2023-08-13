@@ -192,7 +192,7 @@ def get_contours_off_all_rectangles(image):
 occupancy_canny_param1 = 1
 occupancy_canny_param2 = 1
 
-def get_occupancy(image, createTrackBars, number_of_occupancy, init):
+def get_occupancy(image, createTrackBars, number_of_occupancy):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # Blur
     blur = cv2.GaussianBlur(gray, (5,5), 0)
@@ -210,7 +210,7 @@ def get_occupancy(image, createTrackBars, number_of_occupancy, init):
 
     while 1:
 
-        if(init == True):
+        if(createTrackBars == True):
             cv2.setTrackbarPos('param1','Occupancy_canny', occupancy_canny_param1)
             cv2.setTrackbarPos('param2','Occupancy_canny', occupancy_canny_param2)
 
@@ -237,10 +237,10 @@ def get_occupancy(image, createTrackBars, number_of_occupancy, init):
 
         cv2.imshow('Occupancy_result', result)
 
-        if(init == False or len(contours) == number_of_occupancy):
+        if(createTrackBars == False or len(contours) == number_of_occupancy):
             # print("Occupancy: " + str(len(contours)))
             break
-
+        
         occupancy_canny_param1 += 1
         if(occupancy_canny_param1 == 100):
             occupancy_canny_param1 = 1
@@ -405,9 +405,9 @@ def is_hand_above_image(image, number_of_occupancy):
     occupancy_canny_param1 = cv2.getTrackbarPos('param1','Occupancy_canny')
     occupancy_canny_param2 = cv2.getTrackbarPos('param2','Occupancy_canny')
 
-    # print(str(occupancy_canny_param1) + " - " + str(occupancy_canny_param2))
-    # Canny
+     # Canny
     edges = cv2.Canny(blur,occupancy_canny_param1,occupancy_canny_param2,apertureSize=3)
+    cv2.imshow("Occupancy_canny", edges)
 
     imagem = cv2.bitwise_not(edges)
 
