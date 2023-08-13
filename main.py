@@ -23,6 +23,7 @@ def main():
     number_of_occupancy = 40
     game_board = None
     was_move_made = False
+    player = 1
     while 1:
         key = cv2.waitKey(1) & 0xFF
         if key == 27:
@@ -79,8 +80,26 @@ def main():
             else:      
                 if(was_move_made):
                     print("\n\n\n\n\n\n\n\n\n\n")
-                game_board = game.checker_game(possible_moves, game_board, was_move_made)
-                was_move_made = False
+
+                if(game_board is None):
+                    game_board = game.create_checkers_board(possible_moves)
+                    print_game_board(possible_moves, game_board, player)
+                
+                if(was_move_made):
+                    who_made_move = game.who_made_move(possible_moves, game_board)
+                    if(who_made_move is None):
+                        print_game_board(possible_moves, game_board, player)
+                        print("Caka sa na tah od hraca: " + str(player))
+                    else:
+                        game_board = game.update_checkers_board(possible_moves, game_board)
+                        print_game_board(possible_moves, game_board, player)
+                        if(who_made_move == 1):
+                            player = 2
+                            print("Caka sa na tah od hraca: " + str(player))
+                        else:
+                            player = 1
+                            print("Caka sa na tah od hraca: " + str(player))
+                    was_move_made = False
                 
             
 
@@ -94,6 +113,17 @@ def main():
     cam.close_device()
 
     print('Done.')
+
+
+def print_game_board(possible_moves, game_board, player):
+    print("Hracia doska po tahu od hraca: " + str(player) +"\n")
+    print("Possible moves \n")
+    print(possible_moves)
+    print("\n")
+
+    print("Game board \n")
+    print(game_board)
+    print("\n")
 
 
 if __name__ == '__main__':

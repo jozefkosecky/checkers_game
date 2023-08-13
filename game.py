@@ -1,29 +1,6 @@
 import numpy as np
 
 
-def checker_game(possible_moves, game_board,was_move_made):
-    if(game_board is None):
-        game_board = create_checkers_board(possible_moves)
-        print("\n")
-        print(possible_moves)
-        print("\n")
-
-        print("\n")
-        print(game_board)
-        print("\n")
-
-    if(was_move_made):
-        game_board = update_checkers_board(possible_moves, game_board)
-        print("\n")
-        print(possible_moves)
-        print("\n")
-
-        print("\n")
-        print(game_board)
-        print("\n")
-    return game_board
-
-
 def create_checkers_board(possible_moves):
     board = np.zeros((8, 8), dtype=int)
     for row in range(8):
@@ -36,6 +13,15 @@ def create_checkers_board(possible_moves):
             if(possible_moves[row, col] == 3):
                 board[row, col] = 3 # Possible moves
     return board
+
+
+def who_made_move(possible_moves, game_board):
+    stone = None
+    for row in range(8):
+        for col in range(8):
+            if(possible_moves[row, col] == 3 and (game_board[row, col] == 1 or game_board[row, col] == 2)):
+                stone = game_board[row, col]
+    return stone
 
 def update_checkers_board(possible_moves, game_board):
     board = np.zeros((8, 8), dtype=int)
